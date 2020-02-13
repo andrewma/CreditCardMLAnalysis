@@ -1,69 +1,126 @@
 ---
 title: "Credit Card Acceptance Model"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
 ---
-<h3> Credit Card Acceptance Model </h3>
-This project will analyze the cross-section data on the credit history for a sample of applicants for a type of credit card. I will see the influence of different variables on whether or not an individual was accepted for a credit card. This data is from cran.r-project.org and was done by William H. Greene. 
+
+<h3> Introduction </h3>
+This project will analyze the cross-section data on the credit history for a sample of applicants for a type of credit card. I will see the influence of different variables on whether or not an individual was accepted for a credit card. This data is from cran.r-project.org and was done by William H. Greene. We are evaluating whether or not someone was accepted for a credit card so it only holds two values - yes or no. 
+
+<h3> Explanation of variables </h3>
 
 The Y value is whether or not an applicant was accepted and it holds two values: yes or no. 
 
 A data frame containing 1,319 observations on 12 variables.
+
 **card** Factor. Was the application for a credit card accepted? 
+
 **reports** Number of major derogatory reports.
+
 **age** Age in years plus twelfths of a year.
+
 **income** Yearly income (in USD 10,000).
+
 **share** Ratio of monthly credit card expenditure to yearly income. 
+
 **expenditure** Average monthly credit card expenditure.
+
 **owner** Factor. Does the individual own their home?
+
 **selfemp** Factor. Is the individual self-employed?
+
 **dependents** Number of dependents.
+
 **months** Months living at current address. 
+
 **majorcards** Number of major credit cards held. 
+
 **active** Number of active credit accounts.
 
-When looking at the x values provided, I believe the following can better explain the y: reports, share, majorcards, and active. I chose those four x values because intuitively, a negative impact on those four would negatively impact whether or not an individual gets a credit card. 
+<h3> Brief Overall Summary Statistics for the data </h3>
 
-```{r}
+
+```{r message = FALSE}
 library(ISLR)
+library(AER)
 data("CreditCard")
-
+CreditCard = data.frame(CreditCard)
+summary(CreditCard)
 library(ggplot2)
-ggplot(CreditCard, aes(x=share, y=card))+ 
-  geom_point(color='blue', size = 1)
-```
-```{r}
-ggplot(CreditCard, aes(reports))+ 
-  geom_histogram()
-ggplot(CreditCard, aes(x=as.factor(reports), y = card)) + 
-geom_boxplot()
-```
-```{r}
-ggplot(CreditCard, aes(majorcards))+ 
-  geom_histogram()
 ```
 
+  This table of summary statistics provides a brief overview of the data we are presented with. We are provided with the min., 1st quartile, median, mean, 3rd quartile, and max of each variable. There are three variables that hold yes and no values: the output - card, owner(does individual own their home), and selfemp(is the individual self employed). Ialso see that most people who own major cards only have 0 or 1. Another thing that stood out to me when briefly looking at this data overview was that there may be some outliers in the dataset. For the average monthly credit card expenditure, I notice that the mean is 185.057 however the maximum value in that data is 3099.505. This dataset will be interesting to analyze and I will see what conclusions I can draw from it through deeper analysis. 
+  
+  
+<h2> Analysis of four x variables</h3>
+
+  When looking at the x values provided, I believe the following can better explain the y: share, reports, majorcards, and active. I chose those four x values because intuitively, I assume that a negative impact on those four would negatively impact whether or not an individual gets a credit card so we would be able to see a correlation between them. 
+
+<h3> Analysis of share</h3>
+
 ```{r}
-ggplot(CreditCard, aes(reports))+ 
-  geom_histogram()
+ggplot(CreditCard, aes(share))+ 
+  geom_histogram() + ggtitle("Histogram of share")
 ```
+
+  In the histogram above, I am analyzing a single variable, share, which is the ratio of monthly credit card expenditure to income. I notice that the histogram is right skewed. This says that people typically do not spend all of their income on credit card purchases. In fact, the data indicates that many people do not spend any money charged to a credit card. However, a good portion of the data indicates that many others do spend part of their income on credit card expenditures.
+
+```{r}
+ggplot(CreditCard, aes(x=share, y=card)) + 
+  geom_boxplot() + ggtitle("Boxplot of share and card")
+```
+  
+  When looking at this graph, I notice that there were many credit cards approved even though the share of the monthly card expenditure and yearly income was in a wide range. However, this data also told me that everyone who got rejected for a credit card had a low share which is interesting to see because it seems that a low share is a good thing which means that people are not spending too money on their credit card in relation to their income. 
+  
+<h3>Analysis of reports</h3>
+
+```{r message=FALSE}
+ggplot(CreditCard, aes(x=reports, y=card)) +
+  geom_bar(stat="identity", fill="steelblue")+
+  theme_minimal()+ ggtitle("Number of occurences for certain number of derogatory reports")
+labs(y="count")
+  
+```
+
+  This barplot tells us that most people that applied for credit cards did not have any derogatory reports. The y-axis count tells us the number of observations of the derogatory reports that we see. This tells us that most people applying for a credit card did not commit crimes or do anything illegal since those that did may be deterred from opening a credit card if they committed a crime. 
+  
 ```{r}
 ggplot(CreditCard, aes(x=reports, y=card))+ 
-  geom_point(color='blue', size = 1) + 
-  labs(y="card accepted", x="reports")
+  geom_point(color='blue', size = 1, alpha = 0.1) + scale_x_continuous(breaks = seq(0, 14, by = 1)) +
+  labs(y="card", x="reports")
 ```
-```{r}
-ggplot(CreditCard, aes(x=share, y=card))+ 
-  geom_point(color='blue', size = 1) + 
-  labs(y="card accepted", x="share")
+    When looking at the plot I see that most people who get approved for a card typically do not have any derogatory reports. The shade of the points indicate the density so for example, if a point was more blue, that means it had many more points at that spot than another that was lighter. Also, I see that people who got rejected for a credit card had low reports as well. However, people with a high number of derogatory reports got rejected for a credit card as well. Most people who got approved for a credit card had less than 3 derogatory reports. 
+    
+<h3> Analysis of majorcards</h3>
+
+```{r message=FALSE}
+ggplot(CreditCard, aes(majorcards))+ scale_x_continuous(breaks=c(0,1)) +
+  geom_bar() + ggtitle("Number of occurences for either 0 or 1 major card")
+  # labs(y="count")
 ```
-```{r}
+We see that most people who applied for a credit card only owned 1 major credit card already. More than a third of the people who applied with already 1 credit card, applied without having any major credit card at all. We will need to do further research to see whether or not it affected whether or not someone was approved for a credit card. 
+
+```{r message=FALSE}
 ggplot(CreditCard, aes(x=majorcards, y=card))+ 
-  geom_point(color='blue', size = 1) + 
-  labs(y="card accepted", x="majorcards")
+  geom_point(color='blue', size = 1, alpha = 0.1) + scale_x_continuous(breaks=c(0,1))
+  labs(y="card", x="majorcards")
 ```
+    This graph shows me that there is typically an equal distribution between people who get approved for a credit card with the number of majorcards they have. I deduce that probably having either 0 or 1 major cards will not affect the acceptance of a credit card. Based off the density of those points, it seems that all four are almost the same color so they all have a similar distribution. Thus, having 0 or 1 major credit card will not be a large influence on the value of "card" which is the acceptance of the credit card. 
+    
+<h3> Analysis of Active </h3>
 
 ```{r}
-ggplot(CreditCard, aes(x=active, y=card))+ 
-  geom_point(color='blue', size = 1) + 
-  labs(y="card accepted", x="active")
+ggplot(CreditCard, aes(active))+ 
+  geom_bar(color = "orange", fill = "green") + ggtitle("Number of occurrences for values of the number of active credit accounts")
+  # labs(y="count")
 ```
+    This graph tells us the distribution of the number of active credit accounts for the dataset we have. Most people who apply for a credit card have 0 active credit accounts. This is logical because if someone does not have a credit account, it seems that they may want to go apply for a credit card. The data shows that the distribution starts to lower as we increase the number of active credit accounts. This is logical as well because since they already have active credit accounts, they are less likely to go want to get another credit card. 
+    
+```{r}
+ggplot(CreditCard, aes(x=active, y=card))+ 
+  geom_point(color='purple', size = 1, alpha = 0.1) +scale_x_continuous(breaks = seq(0, 46, by = 2)) +
+  labs(y="card", x="active")
+```
+    This graph indicates to me that the number of active credit accounts may not greatly influence the acceptance of the credit card. The distribution for the range from 0 to 6 of active credit accounts look very similar for yes and no in cards. Furthermore, we see from the graph that a good number of individuals with a higher number of active credit accounts, from 10 to 20, even get approved for the credit card. In fact, if we look at a high number like 16 active credit accounts, we see that more people got accepted, rather than rejected, for the credit card. 

@@ -1,0 +1,6 @@
+---
+title: "Ma_Andrew_Report 4"
+output: html_document
+---
+<h3> Introduction of Paper </h3>
+This is my paper for the Credit Card Acceptance Rate. This document includes all the work I have done up to the fourth report. I have incorporated the comments from the first three reports. 

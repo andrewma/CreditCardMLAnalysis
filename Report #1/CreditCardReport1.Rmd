@@ -91,6 +91,17 @@ ggplot(CreditCard, aes(x=reports, y=card))+
   geom_point(color='blue', size = 1, alpha = 0.1) + scale_x_continuous(breaks = seq(0, 14, by = 1)) +
   labs(y="card", x="reports")
 ```
+
+```{r}
+#stacked bar plot
+ggplot(CreditCard, aes(x=reports, y=card))+ 
+  geom_point(color='blue', size = 1, alpha = 0.1) + scale_x_continuous(breaks = seq(0, 14, by = 1)) +
+  labs(y="card", x="reports")
+library(ggplot2)
+# Stacked
+ggplot(CreditCard, aes(fill='steelblue', y=card, x=reports)) + 
+    geom_bar(position="stack", stat="identity")
+```
     When looking at the plot I see that most people who get approved for a card typically do not have any derogatory reports. The shade of the points indicate the density so for example, if a point was more blue, that means it had many more points at that spot than another that was lighter. Also, I see that people who got rejected for a credit card had low reports as well. However, people with a high number of derogatory reports got rejected for a credit card as well. Most people who got approved for a credit card had less than 3 derogatory reports. 
     
 <h3> Analysis of majorcards</h3>

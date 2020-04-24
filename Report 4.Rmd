@@ -4,3 +4,183 @@ output: html_document
 ---
 <h3> Introduction of Paper </h3>
 This is my paper for the Credit Card Acceptance Rate. This document includes all the work I have done up to the fourth report. I have incorporated the comments from the first three reports. 
+```{r}
+library(keras)
+library(ISLR)
+library(dplyr)
+library(MASS)
+library(tensorflow)
+```
+
+```{r}
+set.seed(1) # we are going to change the seed later to see what happens! It's '1' for now.
+boston_train = Boston %>%
+  sample_frac(.7)
+boston_test = Boston %>%
+  setdiff(boston_train)
+```
+
+```{r}
+train_labels <- as.matrix(boston_train[,"medv"]) # This is the Y variable
+train_data <- as.matrix(boston_train[!names(boston_train) %in% c("medv")]) #These are the X variables
+test_data <- as.matrix(boston_test[!names(boston_train) %in% c("medv")]) #These are the X variables
+test_labels <- as.matrix(boston_test[,"medv"]) # This is the Y variable
+```
+
+```{r}
+paste0("Training entries: ", length(train_data), ", labels: ", length(train_labels))
+```
+
+```{r}
+train_data[1:2, ]
+```
+
+```{r}
+train_data <- scale(train_data) 
+test_data <- scale(test_data)
+```
+
+```{r}
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "relu", #sigmoid for classification
+              input_shape = dim(train_data)[2]) %>% 
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 1)
+```
+
+```{r}
+model %>% compile(
+  loss = "mse",
+  optimizer = optimizer_rmsprop(),
+  metrics = list("mean_absolute_error")
+)
+```
+
+```{r}
+model %>% summary()
+```
+
+```{r}
+epochs <- 200
+history <- model %>% fit(
+  train_data,
+  train_labels,
+  epochs = epochs,
+  validation_split = 0.2
+)
+```
+
+```{r}
+library(ggplot2)
+plot(history, metrics = "mean_absolute_error", smooth = FALSE) +
+  coord_cartesian(ylim = c(0, 5))
+```
+
+```{r}
+model %>% summary()
+```
+
+```{r}
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "relu",
+              input_shape = dim(train_data)[2]) %>%
+  layer_dense(units = 64, activation = "relu") %>%
+  layer_dense(units = 1)
+```
+
+model %>% compile(
+  loss = "mse",
+  optimizer = optimizer_rmsprop(),
+  metrics = list("mean_absolute_error")
+)
+
+```{r}
+early_stop <- callback_early_stopping(monitor = "val_loss", patience = 20)
+
+```{r}
+history2 <- model %>% fit(
+  train_data,
+  train_labels,
+  epochs = epochs,
+  validation_split = 0.2,
+  callbacks = list(early_stop)
+)
+```
+
+```{r}
+plot(history2, metrics = "mean_absolute_error", smooth = FALSE) +
+  coord_cartesian(xlim = c(0, 150), ylim = c(0, 5))
+```
+
+```{r}
+test_predictions <- model %>% predict(test_data)
+mean((test_labels - test_predictions)^2)
+```
+
+```{r}
+Boston$medv_high <- ifelse(Boston$medv > mean(Boston$medv),1,0)
+Boston$medv_high[1:10]
+```
+
+```{r}
+set.seed(2) 
+boston_train = Boston %>%
+  sample_frac(.7)
+
+boston_test = Boston %>%
+  setdiff(boston_train)
+```
+
+```{r}
+train_labels <- to_categorical(boston_train[,"medv_high"],2)
+train_data <- as.matrix(boston_train[!names(boston_train) %in% c("medv","medv_high")])
+test_data <- as.matrix(boston_test[!names(boston_train) %in% c("medv","medv_high")])
+test_labels <- to_categorical(boston_test[,"medv_high"])
+```
+
+```{r}
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "softmax",
+              input_shape = dim(train_data)[2]) %>%
+  layer_dense(units = 64, activation = "softmax") %>%
+  layer_dense(units = 2, activation= "softmax")
+```
+
+```{r}
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+```
+
+```{r}
+early_stop <- callback_early_stopping(monitor = "val_loss", patience = 20)
+
+epochs=300
+history_class <- model %>% fit(
+  train_data,
+  train_labels,
+  epochs = epochs,
+  validation_split = 0.2,
+  callbacks = list(early_stop)
+)
+```
+
+```{r}
+plot(history_class)
+```
+
+```{r}
+test_predictions <- model %>% predict(test_data)
+head(test_predictions)
+```
+
+```{r}
+test_class <- model %>% predict_classes(test_data)
+head(test_class)
+```
+
+```{r}
+table(test_labels[,2], test_class)
+```

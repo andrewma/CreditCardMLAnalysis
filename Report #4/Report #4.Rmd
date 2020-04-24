@@ -205,6 +205,7 @@ X_test <- as.matrix(card_test[!names(card_train) %in% c("card")])
 ```
 <h2>a. Error rate table</h2>
 ```{r}
+library(keras)
 if(FALSE){
 set.seed(1)
 card.xgb = xgboost(data=dtrain,

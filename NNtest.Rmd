@@ -1,0 +1,64 @@
+---
+title: "Ma_Andrew_Report 4"
+output:
+  pdf_document: default
+---
+<h3> Introduction of Paper </h3>
+This is my paper for the Credit Card Acceptance Rate. This document includes all the work I have done up to the fourth report. I have incorporated the comments from the first three reports. 
+```{r}
+library(keras)
+library(ISLR)
+library(dplyr)
+library(AER)
+library(tensorflow)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+```
+
+```{r}
+CreditCard$card_yes <- ifelse(CreditCard$card == "yes",1,0)
+set.seed(123) 
+card_train = CreditCard %>%
+  sample_frac(.7)
+
+card_test = CreditCard %>%
+  setdiff(card_train)
+
+train_labels <- to_categorical(card_train[,"card_yes"],2)
+train_data <- as.matrix(card_train[!names(card_train) %in% c("card","card_yes")])
+test_data <- as.matrix(card_test[!names(card_train) %in% c("card","card_yes")])
+test_labels <- to_categorical(card_test[,"card_yes"])
+
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "softmax",
+              input_shape = dim(train_data)[2]) %>%
+  layer_dense(units = 64, activation = "softmax") %>%
+  layer_dense(units = 2, activation= "softmax")
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+early_stop <- callback_early_stopping(monitor = "val_loss", patience = 20)
+
+epochs=200
+history_class <- model %>% fit(
+  train_data,
+  train_labels,
+  epochs = epochs,
+  validation_split = 0.2,
+  callbacks = list(early_stop)
+)
+plot(history_class)
+
+test_predictions <- model %>% predict(test_data)
+head(test_predictions)
+test_class <- model %>% predict_classes(test_data)
+head(test_class)
+error_table = table(test_labels[,2], test_class)
+accuracy = (sum(diag(error_table)))/sum(error_table)
+accuracy
+```

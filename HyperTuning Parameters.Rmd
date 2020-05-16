@@ -5,27 +5,36 @@ output: html_document
 
 ```{r}
 rm(list=ls())
-library(MASS)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+names(CreditCard)
+dim(CreditCard)
+CreditCard$card <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
 library(dplyr)
 library(xgboost)
+class(CreditCard$card)
+#library(MASS)
+#names(CreditCard)
 ```
 
 ```{r}
 set.seed(1)
-boston_train = Boston %>%
+card_train = CreditCard %>%
   sample_frac(.5)
 
-boston_test = Boston %>%
-  setdiff(boston_train)
+card_test = CreditCard %>%
+  setdiff(card_train)
 ```
 
 ```{r}
-Y_train <- as.matrix(boston_train[,"medv"])
-X_train <- as.matrix(boston_train[!names(boston_train) %in% c("medv")])
+Y_train <- as.matrix(card_train[,"card"])
+X_train <- as.matrix(card_train[!names(card_train) %in% c("card")])
 dtrain <- xgb.DMatrix(data = X_train, label = Y_train)
 
-X_test <- as.matrix(boston_test[!names(boston_train) %in% c("medv")])
-Y_test <- as.matrix(boston_test[,"medv"])
+X_test <- as.matrix(card_test[!names(card_train) %in% c("card")])
+Y_test <- as.matrix(card_test[,"card"])
 dtest <- xgb.DMatrix(data = X_test, label = Y_test)
 ```
 
@@ -36,14 +45,14 @@ params <- list(max_depth = 5,
                lambda = 0, # coef of the L2 regularization
                objective = "reg:linear")
 
-boston.xgb = xgboost(param = params, data=dtrain,
+CreditCard.xgb = xgboost(param = params, data=dtrain,
                      nrounds = 91,
                      print_every_n = 10)
 ```
 
 ```{r}
-yhat.xgb <- predict(boston.xgb,X_test)
-round(mean((yhat.xgb - boston_test$medv)^2),2)
+yhat.xgb <- predict(CreditCard.xgb,X_test)
+round(mean((yhat.xgb - card_test$card)^2),2)
 ```
 
 ```{r}
@@ -81,7 +90,7 @@ params = list(
 )
     
   # train model
-  boston.xgb.cv <- xgb.cv(param=params, data = dtrain,
+  CreditCard.xgb.cv <- xgb.cv(param=params, data = dtrain,
                         nfold = cv.nfold,
                         nrounds=cv.nround,
                         early_stopping_rounds = 20, # training will stop if performance doesn't improve for 20 rounds from the last best iteration
@@ -89,8 +98,8 @@ params = list(
                         )  
     
   # add min training error and trees to grid
-  hyper_grid$optimal_trees[i] <- boston.xgb.cv$best_iteration
-  hyper_grid$min_RMSE[i] <- boston.xgb.cv$evaluation_log$test_rmse_mean[boston.xgb.cv$best_iteration]
+  hyper_grid$optimal_trees[i] <- CreditCard.xgb.cv$best_iteration
+  hyper_grid$min_RMSE[i] <- CreditCard.xgb.cv$evaluation_log$test_rmse_mean[CreditCard.xgb.cv$best_iteration]
 }
 ```
 
@@ -111,13 +120,13 @@ params = list(
 )
 
 watchlist <- list(train = dtrain, test = dtest)
-boston.xgb = xgb.train(param = params, data=dtrain,
+CreditCard.xgb = xgb.train(param = params, data=dtrain,
                        nrounds = 85,
                        print_every_n = 10,
                        watchlist = watchlist)
 
-yhat.xgb <- predict(boston.xgb,X_test)
-round(mean((yhat.xgb - boston_test$medv)^2),2)
+yhat.xgb <- predict(CreditCard.xgb,X_test)
+round(mean((yhat.xgb - card_test$card)^2),2)
 ```
 
 ```{r}
@@ -127,15 +136,15 @@ library(gbm)
 ```{r}
 set.seed(1)
 
-yhat.boost <- gbm(medv~., data = boston_train,
+yhat.boost <- gbm(card~., data = card_train,
                     distribution = "gaussian",
                     n.trees= 100,
                     interaction.depth=4,
                     shrinkage = 0.01, #learning rate
                     verbose=F)
 
-yhat.boost <- predict(yhat.boost, boston_test, n.trees = 100)
-mean((yhat.boost-boston_test$medv)^2)
+yhat.boost <- predict(yhat.boost, card_test, n.trees = 100)
+mean((yhat.boost-card_test$card)^2)
 ```
 
 ```{r}
@@ -160,9 +169,9 @@ for(i in 1:nrow(hyper_grid)) {
   
   # train model
   gbm.tune <- gbm(
-    formula = medv ~ .,
+    formula = card ~ .,
     distribution = "gaussian",
-    data = boston_train,
+    data = card_train,
     n.trees = 2000,
     interaction.depth = hyper_grid$interaction.depth[i],
     shrinkage = hyper_grid$shrinkage[i],
@@ -206,9 +215,9 @@ for(i in 1:nrow(hyper_grid)) {
   
   # train model
   gbm.tune <- gbm(
-    formula = medv ~ .,
+    formula = card ~ .,
     distribution = "gaussian",
-    data = boston_train,
+    data = card_train,
     n.trees = 2000,
     interaction.depth = hyper_grid$interaction.depth[i],
     shrinkage = hyper_grid$shrinkage[i],
@@ -233,7 +242,7 @@ hyper_grid %>%
 ```{r}
 set.seed(1)
 bestTreeForPrediction = 104
-yhat.boost <- gbm(medv~., data = boston_train,
+yhat.boost <- gbm(card~., data = card_train,
                     distribution = "gaussian",
                     n.trees=bestTreeForPrediction,
                     interaction.depth=8,
@@ -241,8 +250,8 @@ yhat.boost <- gbm(medv~., data = boston_train,
                     n.minobsinnode = 7,
                     verbose=F)
 
-yhat.boost <- predict(yhat.boost, boston_test, n.trees = bestTreeForPrediction)
-mean((yhat.boost-boston_test$medv)^2)
+yhat.boost <- predict(yhat.boost, card_test, n.trees = bestTreeForPrediction)
+mean((yhat.boost-card_test$card)^2)
 ```
 
 ```{r}
@@ -262,13 +271,14 @@ hyper_grid <- expand.grid(
 ```
 
 ```{r}
+card_train$card = as.factor(CreditCard$card)
 xgb_control <- trainControl(
   method="cv", #re-samoling methods: "boot", "boot632", "optimism_boot", "boot_all","repeatedcv", "LOOCV", "LGOCV"
   number = 3
 )
 
 set.seed(1)
-boston.xgb.tuned <- train(medv~., data=boston_train, 
+CreditCard.xgb.tuned <- train(card~., data=card_train, 
                           trControl=xgb_control,
                           tuneGrid=hyper_grid,
                           lambda=0,
@@ -276,18 +286,18 @@ boston.xgb.tuned <- train(medv~., data=boston_train,
 ```
 
 ```{r}
-boston.xgb.tuned$bestTune
+CreditCard.xgb.tuned$bestTune
 ```
 
 ```{r}
-plot(boston.xgb.tuned)
+plot(CreditCard.xgb.tuned)
 ```
 
 ```{r}
-boston.xgb = xgb.train(param = boston.xgb.tuned$bestTune,
+CreditCard.xgb = xgb.train(param = CreditCard.xgb.tuned$bestTune,
                        data=dtrain,
                        nround = 115)
 
-yhat.xgb <- predict(boston.xgb,X_test)
-round(mean((yhat.xgb - boston_test$medv)^2),2)
+yhat.xgb <- predict(CreditCard.xgb,X_test)
+round(mean((yhat.xgb - card_test$card)^2),2)
 ```

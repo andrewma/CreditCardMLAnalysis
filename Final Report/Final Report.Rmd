@@ -1,0 +1,487 @@
+---
+title: "Final Report Andrew Ma"
+author: "Andrew Ma"
+date: "May 6, 2020"
+output:
+  pdf_document:
+    includes:
+    toc: yes
+classoption: a4paper
+---
+1. First Report \newline
+\hspace{24pt}a. Summary Statistics\newline
+2. Second Report\newline
+\hspace{24pt}a. Logistic Regression\newline
+\hspace{24pt}b. K Nearest Neighbors\newline
+3. Third Report\newline
+\hspace{24pt}a. Splitting the dataset\newline
+\hspace{24pt}b. Ridge Regression\newline
+\hspace{24pt}c. Lasso Regression\newline
+\hspace{24pt}d. Classification Tree\newline
+4. Fourth Report\newline
+\hspace{24pt}a. Splitting the dataset\newline
+\hspace{24pt}b. Bagging\newline
+\hspace{24pt}c. Random Forest\newline
+\hspace{24pt}d. Boosting\newline
+\hspace{24pt}e. Neural Network\newline
+5. Model Comparisons
+6. Conclusion
+7. References
+
+\pagebreak
+\textbf{Introduction}\newline
+According to a CNBC article from April 2020, credit card debt hit an all time high of $930 billion with young Americans having the highest delinquency rate.\textsuperscript{1}
+In this project, I observed the Credit Card datset from the book, "Applied Econometrics with R" (Kleiber-Zielis, New York. ISBN 978-0-387-77316-2). This dataset contained the credit history for a sample of applicants for a type of credit card. The dataset also consisted of 1,319 observations on 12 variables. The response variable was "card", which was whether or not the application for a credit card was accepted. With the data, statistical analysis and machine learning models will be implemented to predicted whether or not a credit card application will be accepted. 
+
+We look at classification accuracy. 
+\textbf{First Report}
+```{r message = FALSE}
+library(ISLR)
+library(AER)
+library(ggplot2)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+```
+\textbf{1a. Summary Statistics}
+```{r message = FALSE}
+summary(CreditCard)
+```
+  This table of summary statistics provides a brief overview of the data we are presented with. We are provided with the min., 1st quartile, median, mean, 3rd quartile, and max of each variable. There are three variables that hold yes and no values: the output - card, owner(does individual own their home), and selfemp(is the individual self employed). Ialso see that most people who own major cards only have 0 or 1. Another thing that stood out to me when briefly looking at this data overview was that there may be some outliers in the dataset. For the average monthly credit card expenditure, I notice that the mean is 185.057 however the maximum value in that data is 3099.505. This dataset will be interesting to analyze and I will see what conclusions I can draw from it through deeper analysis. 
+  
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+owner_hist<-ggplot(CreditCard, aes(x=owner), space = 50) +
+geom_bar(fill="blue", width = 0.3) +
+labs(title = "Histogram of Shares") + 
+theme(panel.background = element_blank())
+owner_hist
+```
+Most applicants that applied for a credit card did not own their own home. So most are likely renting.
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+selfemp_hist<-ggplot(CreditCard, aes(x=selfemp)) +
+geom_bar(fill="blue", width = 0.3) +
+labs(title = "Histogram of Selfemp") + 
+theme(panel.background = element_blank())
+selfemp_hist
+```
+```{r out.width = "75%", fig.align='center'}
+majorcards_hist<-ggplot(CreditCard, aes(x=majorcards)) +
+geom_bar(fill="blue", width = 0.3) +
+labs(title = "Histogram of majorcards") + 
+theme(panel.background = element_blank())
+majorcards_hist
+```
+The histogram shows that most applicants are not self-employed or have their own business. Thus, most are likely to have jobs working for a company. 
+
+```{r message=FALSE, fig.align='center'}
+data(CreditCard)
+CreditCard$card01 <- ifelse(CreditCard$card=="yes", 1, 0)
+attach(CreditCard)
+
+# Boxplots
+par(mfrow=c(2,4))
+for(i in names(CreditCard)){
+  # excluding the own mpgs variables and others categorical variables
+  if( grepl(i, pattern="^card|owner|selfemp|name|majorcards")){ next}
+  boxplot(eval(parse(text=i)) ~ card01, ylab=i, main =paste(i, "boxplot"), 
+          col=c("red", "blue"))
+}
+```
+\setlength{\belowcaptionskip}{-1000pt}The box plots above show the distribution of values for each variable versus the response variable "yes" or "no", which was converted to 0 and 1. We are given the 1\textsuperscript{st}, 3\textsuperscript{rd}, and median. Additionally, the circles represent the outliers. \newline
+\textbf{Summary of Boxplot Observations:}
+\begin{itemize}
+  \item People who have more derogatory reports are more likely to get rejected.
+  \item The age of applicants between those who get approved and not approved are similar. 
+  \item Income between accepted and not accepted are similar. 
+  \item For the share  boxplot, it looks very close to 0 but with closer look, there are no values of 0 - only values that are very close to 0. This seems to indicate that the credit card company mostly approves people who will use the credit card for more purchases. 
+  \item In expenditures, there are values of 0 so it shows that most people who get rejected also do not use a credit card often, supporting our point above. 
+  \item  Applicants who get denied also have a median of one dependent while the median number among those who get approved is 0 dependents. Most young adults would typically not have any dependents. 
+  \item Months living at current address are similar for both.
+  \item Most people 
+  
+\end{itemize}
+
+\textbf{Second Report}\newline
+\textbf{2a. Logistic Classification}\newline
+I have 11 different variables for my y so I will choose 5 variables that I believe have the largest effect - reports, share, selfemp, majorcards,active. 
+
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+glm.fits1 <- glm(card~reports+share+selfemp+majorcards+active,
+                 data = CreditCard, family = binomial)
+glm.probs1 = predict(glm.fits1,CreditCard,type="response")
+glm.pred1 = rep(0,length(glm.probs1))
+glm.pred1[glm.probs1>.90]=1
+table1 = table(glm.pred1,CreditCard$card)
+accuracy = (sum(diag(table1)))/sum(table1)
+table1
+accuracy
+plot(reports,card01,xlab="reports",ylab="card01") 
+g=glm(card~reports,family=binomial,data = CreditCard)
+curve(predict(g,data.frame(reports=x),type="resp"),add=TRUE)
+```
+The logistic regression used with the variables reports, share, +selfemp, majorcards, active had a 97.4981% classification rate. 
+
+The five variables that I think most correctly predicted my model with logistic regressions are reports, share, selfemp, majorcards, active, data. I think those most logically predict my data because of the fact that negative affects of the X would negatively affect the Y. For example, having a high number of derogatory reports would cause someone to not be accepted for a credit card. While observing the correct predictions, true negatives and true positives, I see that the error rate is .974981 which is extremely high.
+\textbf{2b. K Nearest Neighbors}
+```{r, message = FALSE, out.width = "75%", fig.align='center'}
+library(class)
+library(dplyr)
+data("CreditCard")
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+set.seed(123)
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+
+X_card_trn = train[, -1]
+Y_card_trn = train$card
+
+# testing data
+X_card_tst = test[, -1]
+Y_card_tst = test$card
+
+card_pred = knn(train = scale(X_card_trn), 
+                test  = scale(X_card_tst),
+                cl    = Y_card_trn,
+                k     = 12,
+                prob  = TRUE)
+
+set.seed(123)
+i=1
+k.optm=1
+for (i in 1:28){
+knn.mod <- knn(train=X_card_trn, test=X_card_tst, cl=Y_card_trn, k=i)
+k.optm[i] <- 100 * sum(Y_card_tst == knn.mod)/NROW(Y_card_tst)
+k=i
+cat(k,'=',k.optm[i],'')
+}
+
+plot(k.optm, type="b", xlab="K- Value",ylab="Accuracy level")
+
+confusion_matrix = table(card_pred, Y_card_tst)
+classification_rate = (sum(diag(confusion_matrix)))/sum(confusion_matrix)
+classification_rate
+```
+\textbf{Third Report}
+Libraries and code used to set up the third report
+```{r message = FALSE, fig.align='center'}
+library(ISLR)
+library(AER)
+library(ggplot2)
+library(dplyr)
+library(glmnet)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+names(CreditCard)
+dim(CreditCard)
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+```
+
+\textbf{3a. Splitting dataset}
+```{r message = FALSE}
+library(caret)
+library(dplyr)
+library(glmnet)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+
+set.seed(123)
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+x_train = model.matrix(card~., train)[,-1] 
+x_test = model.matrix(card~., test)[,-1]
+y_train = train$card
+y_test = test$card
+
+x = model.matrix(card~., CreditCard)[,-1] 
+y = CreditCard$card
+```
+With this part, I divided 70 percent of my data into a training dataset and 30 percent to testing subset. 
+
+\textbf{3b. Ridge Regression}
+```{r message = FALSE, fig.align='center'}
+set.seed(123)
+grid = 10^seq(5, -2, length = 100)
+#grid = c(.1,.2,.3)
+cv.out = cv.glmnet(x_train, y_train, alpha = 0, family = "binomial", lambda = grid) 
+bestlam = cv.out$lambda.1se
+bestlam
+```
+The $\lambda$ within 1 standard error is 0.01384886 in my Ridge Regression. 
+```{r message = FALSE, out.width="75%", fig.align='center'}
+plot(cv.out)
+```
+The graph shows the relationship between the cross-validation error and log of $\lambda$ which is selected. The dash
+is the minimum lambda. 
+
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+ridge_mod = glmnet(x_train, y_train, alpha = 0, lambda = grid, family = "binomial")
+ridge_pred = predict(ridge_mod, s = bestlam, newx = x_test) 
+out = glmnet(x, y, alpha = 0, family = "binomial") 
+plot(out, xvar = "lambda")
+```
+This is a plot of the coefficients of the variables. We see how with Ridge Regression, we are not decreasing the number of variables which is why they are all 11 on top. 
+```{r message = FALSE}
+ridge_coef = predict(out, type = "coefficients", s = bestlam)[1:12,]
+ridge_coef
+```
+
+While most of these coefficients are small, the largest coefficients are dependents and income. 
+```{r message = FALSE}
+ridge_mod = glmnet(x_train, y_train, alpha = 0, lambda = bestlam, family = 'binomial')
+ridge_pred = predict(ridge_mod, s = bestlam, newx = x_test)
+y_pred = ifelse(ridge_pred>0.3,1,0)
+table(y_pred, y_test)
+```
+\textbf{3c. Lasso Regression}
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+set.seed(123)
+grid = 10^seq(5, -2, length = 100)
+#grid = c(.1,.2,.3)
+cv.out = cv.glmnet(x_train, y_train, alpha = 1, family = "binomial", lambda = grid) 
+bestlam = cv.out$lambda.1se
+bestlam
+cv.lasso <- cv.glmnet(x_train, y_train, alpha = 1, family = "binomial")
+plot(cv.lasso)
+```
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+ridge_pred = predict(ridge_mod, s = bestlam, newx = x_test) 
+out = glmnet(x, y, alpha = 1, family = "binomial")
+plot(out, xvar = "lambda")
+```
+```{r message = FALSE}
+ridge_coef = predict(out, type = "coefficients", s = bestlam)[1:12,]
+ridge_coef
+```
+
+\textbf{3d. Classification Tree}
+```{r message = FALSE}
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+CreditCard$card = as.factor(CreditCard$card)
+
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+
+library(tree)
+tree_card=tree(card~., data =train)
+plot(tree_card)
+text(tree_card, pretty = 0)
+```
+This tree has a depth of 3 and 4 leaves. 
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+tree_pred = predict(tree_card, test, type = "class")
+tree_table = table(tree_pred, test$card)
+accuracy = (sum(diag(tree_table)))/sum(tree_table)
+accuracy
+cv.card = cv.tree(tree_card, FUN = prune.misclass)
+plot(cv.card$size, cv.card$dev, type = "b")
+title("Credit Card Acceptance Classification Tree")
+```
+```{r message = FALSE, out.width="75%", fig.align='center'}
+prune_card = prune.misclass(tree_card, best = 5)
+plot(prune_card)
+text(prune_card, pretty = 0)
+tree_pred = predict(prune_card, test, type = "class")
+prune_table = table(tree_pred, test$card)
+accuracy = (sum(diag(prune_table)))/sum(prune_table)
+accuracy
+```
+<h3>Fourth Report</h3>
+\textbf{4a. Splitting dataset}
+```{r message = FALSE}
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+library(randomForest)
+set.seed(123)
+card_train = CreditCard %>%
+  sample_frac(.70)
+
+card_test = CreditCard %>%
+  setdiff(card_train)
+```
+\textbf{4b. Bagging}
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+set.seed(123)
+bag.card = randomForest(card ~., data = card_train, 
+                          mtry=ncol(card_train) - 1, 
+                          importance=TRUE) 
+plot(bag.card, ylim=c(0.01, .05))
+```
+This plot displays the out of bag error rate as a function of number of trees. It tells us the misclassification rate of the overall training data which is the line in black. The red line indicates the misclassification rate for the yes'. The green line tells us the misclassification rate for the no's. The x-axis is the trees and the y-axis is the error rate. Our argument mtry tells us that all 11 predictors are going to be considered for each split of the tree. Also, We see that the error is decreasing as we keep splitting the trees which is correct. 
+```{r message = FALSE}
+yhat.bag = predict(bag.card, newdata = card_test)
+table(yhat.bag, card_test$card)
+CM = table(yhat.bag, card_test$card)
+accuracy = (sum(diag(CM)))/sum(CM)
+accuracy
+```
+Bagging regression predicted our testing data to 97.98% accuracy. 
+\textbf{4c. Random Forest}
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+set.seed(123)
+rf.card = randomForest(card~., 
+                         data = card_train, 
+                         mtry = 5, 
+                         importance = TRUE,
+                         do.trace = 100)
+plot(rf.card, ylim = c(0, 0.03))
+```
+The hyperparameters for random forest are: mtry: which is the number of variables used at each split, ntree: which is the total number of trees, nodesize: which is the number of observations that we want in the terminal nodes (closely related to the depth of each tree). Also, looking at the plot, as we can see, this plot displays the out of random forest error rate as a function of number of trees. It tells us the misclassification rate of the overall training data which is the line in black. The red line indicates the misclassification rate for the yes'. The green line tells us the misclassification rate for the no's. The x-axis is the trees and the y-axis is the error rate. Our argument mtry tells us that all 11 predictors are going to be considered for each split of the tree. Also, We see that the error is decreasing as we keep splitting the trees which is correct. 
+
+\textbf{4d. Boosting}
+```{r message=FALSE, out.width = "75%", fig.align='center'}
+rm(list=ls())
+library(gbm)
+library(randomForest)
+data("CreditCard")
+ls(CreditCard)
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+#CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+#CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+
+set.seed(123)
+card_train = CreditCard %>%
+  sample_frac(.70)
+
+card_test = CreditCard %>%
+  setdiff(card_train)
+
+set.seed(123)
+boost.card = gbm(card~., 
+                   data = card_train, 
+                   distribution = "bernoulli", 
+                   n.trees = 500, 
+                   interaction.depth = 4)
+
+summary(boost.card)
+
+yhat.boost = predict(boost.card, 
+                         newdata = card_test, 
+                         n.trees = 5000)
+
+boost_pred = predict(boost.card, card_test, n.trees=500, type = "response")
+y_pred = ifelse(boost_pred>0.2,1,0)
+boost_table = table(card_test$card, y_pred)
+accuracy = (sum(diag(boost_table)))/sum(boost_table)
+accuracy
+boost.card
+```
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+accuracy
+boost_table
+```
+\textbf{4e. XGBoost}
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+library(xgboost)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+
+card_train = CreditCard %>%
+  sample_frac(.70)
+
+card_test = CreditCard %>%
+  setdiff(card_train)
+
+Y_train <- as.matrix(card_train[,"card"])
+X_train <- as.matrix(card_train[!names(card_train) %in% c("card")])
+dtrain <- xgb.DMatrix(data = X_train, label = Y_train)
+
+X_test <- as.matrix(card_test[!names(card_train) %in% c("card")])
+set.seed(123)
+set.seed(2)
+card.xgb = xgboost(data=dtrain,
+                     max_depth=2,
+                     eta = 0.1,
+                     nrounds=40, # max number of boosting iterations (trees)
+                     lambda=0,
+                     print_every_n = 10,
+                     objective="binary:logistic")
+
+
+yhat.xgb <- predict(card.xgb,X_test)
+boost_table = table(yhat.xgb, card_test$card)
+
+y_pred = ifelse(yhat.xgb>0.2,1,0)
+boost_table = table(card_test$card, y_pred)
+accuracy = (sum(diag(boost_table)))/sum(boost_table)
+accuracy
+boost.card
+
+
+```
+\textbf{4e. Neural Net}
+
+Setting up the data for the Neural Net
+
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+library(keras)
+library(ISLR)
+library(dplyr)
+library(AER)
+library(tensorflow)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+```
+
+```{r message = FALSE}
+CreditCard$card_yes <- ifelse(CreditCard$card == "yes",1,0)
+set.seed(123) 
+card_train = CreditCard %>%
+  sample_frac(.7)
+
+card_test = CreditCard %>%
+  setdiff(card_train)
+
+train_labels <- to_categorical(card_train[,"card_yes"],2)
+train_data <- as.matrix(card_train[!names(card_train) %in% c("card","card_yes")])
+test_data <- as.matrix(card_test[!names(card_train) %in% c("card","card_yes")])
+test_labels <- to_categorical(card_test[,"card_yes"])
+
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "softmax",
+              input_shape = dim(train_data)[2]) %>%
+  layer_dense(units = 64, activation = "softmax") %>%
+  layer_dense(units = 2, activation= "softmax")
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+early_stop <- callback_early_stopping(monitor = "val_loss", patience = 20)
+
+epochs=200
+history_class <- model %>% fit(
+  train_data,
+  train_labels,
+  epochs = epochs,
+  validation_split = 0.2,
+  callbacks = list(early_stop)
+)
+plot(history_class)
+
+test_predictions <- model %>% predict(test_data)
+test_class <- model %>% predict_classes(test_data)
+error_table = table(test_labels[,2], test_class)
+accuracy = (sum(diag(error_table)))/sum(error_table)
+accuracy
+```
+\textbf{5. Model Comparisons}
+\textbf{Conclusion}
+\textbf{Sources}
+1. https://www.cnbc.com/select/us-credit-card-debt-hits-all-time-high/
+

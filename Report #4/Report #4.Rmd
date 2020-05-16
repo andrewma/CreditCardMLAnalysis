@@ -166,7 +166,7 @@ boost.card = gbm(card~.,
 #summary(boost.card)
 yhat.boost = predict(boost.card, 
                          newdata = card_test, 
-                         n.trees = 5000)
+                         n.trees = 500)
 
 #summary(boost.card)
 #yhat.boost
@@ -174,14 +174,12 @@ yhat.boost = predict(boost.card,
 CM = table(yhat.boost, card_test$card)
 accuracy = (sum(diag(CM)))/sum(CM)
 accuracy
-#CM
-boost.card
 ```
 ```{r}
 yhat.boost = predict(boost.card, 
                          newdata = card_test, 
                          n.trees = 500)
-#yhat.boost
+yhat.boost
 ```
 
 <h2>b.Error Rate compared to LASSO/Ridge/Bagging/Random Forest</h2>
@@ -205,9 +203,8 @@ X_test <- as.matrix(card_test[!names(card_train) %in% c("card")])
 ```
 <h2>a. Error rate table</h2>
 ```{r}
-library(keras)
-if(FALSE){
-set.seed(1)
+
+set.seed(123)
 card.xgb = xgboost(data=dtrain,
                      max_depth=2,
                      eta = 0.1,
@@ -216,11 +213,8 @@ card.xgb = xgboost(data=dtrain,
                      print_every_n = 10,
                      objective="binary:logistic") # for classification: objective = "binary:logistic"
 
-yhat.xgb <- predict(card.xgb,X_test)
-CM = table(yhat.xgb, card_test$card)
-accuracy = (sum(diag(CM)))/sum(CM)
-accuracy
-CM
+
+
 set.seed(2)
 param <- list("max_depth" = 2, "eta" = 0.1, "objective" = "reg:linear", "lambda" = 0)
 cv.nround <- 500
@@ -230,7 +224,12 @@ card.xgb.cv <- xgb.cv(param=param, data = dtrain,
                         nrounds=cv.nround,
                         early_stopping_rounds = 20 # training will stop if performance doesn't improve for 20 rounds from the last best iteration
        )
-}
+
+yhat.xgb <- predict(card.xgb,X_test)
+CM = table(yhat.xgb, card_test$card)
+accuracy = (sum(diag(CM)))/sum(CM)
+accuracy
+CM
 ```
 <h2> b. Comparing error rate Lasso/Ridge/Bagging/RandomForest/Boosting models</h2>
 <h2> c.Importance matrix</h2>

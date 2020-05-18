@@ -1,11 +1,12 @@
 ---
-title: "CreditCardReport3"
-output: html_document
+title: "Credit Card Report 3"
+output:
+  pdf_document: default
 ---
-<h3> Introduction </h3>
-In the third report, I will be using data from the Credit Card Acceptance Report. In this project, I will be incorporating results from my first and second reports while rulling LASSO and Ridge regressions. LASSO, or Least Absolute Selection and Shrinkage Operator, and Ridge are shrinkage methods. I will be conducting Ridge first in my report. Then, I will be running a LASSO regression. This would allow me to then compare both methods to how my logit method in report 2 performed. I will then run a regression or classification tree. Also, for extra credit, I will use boot-strap and fit 100 different trees to my boot-strap subsamples. 
 
-```{r, message=FALSE}
+\begin{center}{\LARGE{\textbf{Third Report}}}\end{center}
+Libraries and code used to set up the third report
+```{r message = FALSE, fig.align='center'}
 library(ISLR)
 library(AER)
 library(ggplot2)
@@ -13,16 +14,23 @@ library(dplyr)
 library(glmnet)
 data("CreditCard")
 CreditCard = data.frame(CreditCard)
-names(CreditCard)
-dim(CreditCard)
-CreditCard$card <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
 CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
 CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
 ```
 
-<h2>1)Divide credit card data into training and testing subsets and setting up for ridge and lasso regressions</h2>
-```{r}
-set.seed(1)
+\textbf{3a. Splitting dataset}
+```{r message = FALSE}
+library(caret)
+library(dplyr)
+library(glmnet)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+
+set.seed(123)
 train = CreditCard %>% sample_frac(.7)
 test = CreditCard %>% setdiff(train)
 x_train = model.matrix(card~., train)[,-1] 
@@ -32,152 +40,147 @@ y_test = test$card
 
 x = model.matrix(card~., CreditCard)[,-1] 
 y = CreditCard$card
-class(y_test)
-head(y_test)
 ```
-With this part, I divided half of my data into a testing and training subset. 
-<h3>RIDGE REGRESSION<h3>
-<h2>2a.Tuning the model: Cross-Validation to find flexibility of the model</h2>
-```{r}
-grid = 10^seq(5, -2, length = 100)
-#grid = c(.1,.2,.3)
-ridge_mod = glmnet(x_train, y_train, alpha = 0, lambda = grid, family = "binomial")
-cv.out = cv.glmnet(x_train, y_train, alpha = 0, family = "binomial", lambda = grid) # Fit ridge regression model on training data
+With this part, I divided 70 percent of my data into a training dataset and 30 percent to testing subset. \newline
 
-bestlam = cv.out$lambda.1se  # Select lamda that minimizes training MSE
+\textbf{3b. Ridge Regression}
+```{r}
+grid = 10^seq(10, -2, length = 100)
+ridge_mod = glmnet(x_train, y_train, alpha=0, lambda = grid, family = "binomial")
+ridge_pred = predict(ridge_mod, s = 4, newx = x_test)
+y_pred = ifelse(ridge_pred>0.2,1,0)
+ridgeperf_matrix = table(y_pred, y_test)
+ridgeperf = (sum(diag(ridgeperf_matrix)))/sum(ridgeperf_matrix)
+ridgeperf
+```
+Before tuning my Ridge regression and using s = 4, I get a classification rate of 21% which is very bad. 
+```{r message = FALSE, out.width="75%"}
+set.seed(123)
+ridge_cv.out = cv.glmnet(x_train, y_train, alpha = 0, family = "binomial")
+bestlam = ridge_cv.out$lambda.min  
 bestlam
-plot(cv.out)
-```
-```{r}
-#seq(5, -3, length = 100)
-```
-We see that .01816285 is the value of $\lambda that results inthe smallest cross-validation error. 
-<h2>2b. Choosing lambda within one standard error of minimum lambda</h2> 
-```{r}
-#bestlam = cv.out$lambda.min  # Select lamda that minimizes training MSE
-bestlam
-```
-The lambda I will choose to be one standard error of my minimum lambda will be one standard error away so I will make it .036324.
-<h2>2c. Show the cross-validation error and the chosen lambda in a graph</h2> 
-```{r}
-bestlam = cv.out$lambda.min
-plot(cv.out)
-```
-In this graph, it is showing me the values of lambda that results in the smallest cross validation for .036324. This plot will allow me to plot the binomial deviance as a function of lambda. 
-<h2>2d. Show how the coefficients vary with lambda in a graph</h2> 
-```{r message = FALSE}
-ridge_pred = predict(ridge_mod, s = bestlam, newx = x_test) # Use best lambda to predict test data
-mean((ridge_pred - y_test)^2) # Calculate test MSE
-out = glmnet(x, y, alpha = 0, family = "binomial") # Fit ridge regression model on the FULL dataset (train and test)
+
+plot(ridge_cv.out)
+ridge_pred = predict(ridge_mod, s = bestlam, newx = x_test) 
+y_pred = ifelse(ridge_pred>0.2,1,0)
+out = glmnet(x, y, alpha = 0, family = "binomial")
+ridge_coef = predict(out, type = "coefficients", s = bestlam)[1:12,] 
 plot(out, xvar = "lambda")
 ```
-In this graph, we see that none of the coefficients are exactly zero, which is correct as shown below. We are plotting the coefficients for the different values of lambda. Also, we see that none of the coefficiencts are exactly zero because ridge regression doesnot perform variable selection. 
-
-<h2>2e. Report the coefficients correspondent with the chosen l</h2> 
 ```{r}
-predict(out, type = "coefficients", s = bestlam)[1:12,] # Display coefficients using lambda chosen by CV
+ridge_coef
 ```
-We see that the coefficient that is the largest is shares so shares has the largest effect in our model. 
-<h2>2f. Report the MSE (Error Rate for classification) in the test subset</h2> 
-```{r message = FALSE}
-ridge_mod = glmnet(x_train, y_train, alpha = 0, lambda = bestlam, family = 'binomial')
-ridge_pred = predict(ridge_mod, s = bestlam, newx = x_test) # Use best lambda to predict test data
-y_pred = ifelse(ridge_pred>0.2,1,0)
-table(y_pred, y_test)
-
-ridge_mod
-```
-THE accuracy rate was 96.9%. 
-#start of lasso regression
-<h3> LASSO REGRESSION<h3>
-<h2>2a.Tuning the model: Cross-Validation<h2>
 ```{r}
+ridge_matrix = table(y_pred, y_test)
+ridgeperf = (sum(diag(ridge_matrix)))/sum(ridge_matrix)
+ridgeperf
+bestlam
+ridge_matrix
+```
+
+The $\lambda$ within 1 standard error is 0.01384886 in my Ridge Regression. 
+The graph shows the relationship between the cross-validation error and log of $\lambda$ which is selected. The dash
+is the minimum lambda. 
+This is a plot of the coefficients of the variables. We see how with Ridge Regression, we are not decreasing the number of variables which is why they are all 11 on top. 
+While most of these coefficients are small, the largest coefficients are dependents and income. 
+Furthermore, we see the improvement tuning does on our model when we originally had 21% of our testing data correctly classified as opposed to 92% after tuning. \newline
+
+
+\textbf{3c. Lasso Regression}
+
+```{r message = FALSE, out.width="75%", fig.align='center'}
+
+grid = 10^seq(10, -2, length = 100)
+lasso_mod = glmnet(x_train, y_train, alpha=1, lambda = grid, family = "binomial")
+lasso_pred = predict(lasso_mod, s = 4, newx = x_test)
+y_pred = ifelse(lasso_pred>0.2,1,0)
+lassoperf_matrix = table(y_pred, y_test)
+lassoperf = (sum(diag(lassoperf_matrix)))/sum(lassoperf_matrix)
+lassoperf
+```
+
+```{r message = FALSE, out.width="75%", fig.align='center'}
+set.seed(123)
 lasso_mod = glmnet(x_train, 
                    y_train, 
                    alpha = 1,
-                   family="binomial") # Fit lasso model on training data
-```
-<h2>2b. Choosing lambda within one standard error of minimum lambda</h2> 
-
-```{r}
-set.seed(1)
-cv.out = cv.glmnet(x_train, y_train, alpha = 1, family="binomial") # Fit lasso model on training data
-plot(cv.out) # Draw plot of training MSE as a function of lambda
-
-bestlam = cv.out$lambda.min # Select lamda that minimizes training MSE
-bestlam
-
-```
-<h2>2c. Show the cross-validation error and the chosen l in a graph</h2> 
-```{r}
-set.seed(1)
-cv.out = cv.glmnet(x_train, y_train, alpha = bestlam, family="binomial") # Fit lasso model on training data
-plot(cv.out) # Draw plot of training MSE as a function of lambda
-```
-
-<h2>2d. Show how the coefficients vary with l in a graph</h2> 
-```{r}
+                   family = "binomial")
 ls(lasso_mod)
-plot(lasso_mod,  xvar = "lambda") 
-```
-In this graph, we see that there is a lot of 
-It looks like a lot of the coefficients are overlapping each other. 
-<h2>2e. Report the coefficients correspondent with the chosen l</h2> 
-```{r}
-out = glmnet(x, y, alpha = 1, lambda = grid, family = "binomial") # Fit lasso model on full dataset
-lasso_coef = predict(out, type = "coefficients", s = bestlam)[1:12,] # Display coefficients using lambda chosen by CV
+plot(lasso_mod,  xvar = "lambda")
+
+set.seed(1)
+lasso_cv.out = cv.glmnet(x_train, y_train, alpha = 1, family = "binomial")
+plot(lasso_cv.out)
+
+bestlam = lasso_cv.out$lambda.1se
+lasso_pred = predict(lasso_mod, s = bestlam, newx = x_test) 
+y_pred = ifelse(lasso_pred>0.2,1,0)
+lassoperf_matrix = table(y_pred, y_test)
+lassoperf = (sum(diag(lassoperf_matrix)))/sum(lassoperf_matrix)
+lassoperf
+bestlam
+out = glmnet(x, y, alpha = 1, lambda = grid, family = "binomial") 
+lasso_coef = predict(out, type = "coefficients", s = bestlam)[1:12,] 
 lasso_coef
-lasso_coef[lasso_coef != 0] # Display only non-zero coefficients
+lasso_coef[lasso_coef != 0]
+```
+```{r}
+lasso_matrix = table(y_pred, y_test)
+lassoperf = (sum(diag(lasso_matrix)))/sum(lasso_matrix)
+lassoperf
 bestlam
 ```
-<h2>2f. Report the MSE (Error Rate for classification) in the test subset</h2> 
-```{r}
-lasso_pred = predict(lasso_mod, s = bestlam, newx = x_test) # Use best lambda to predict test data
-CM = table(lasso_pred, card_test$card)
-accuracy = (sum(diag(CM)))/sum(CM)
-accuracy
-```
-The error rate for classification for LASSO was 97.3%. 
-<h3> Running Classification Tree<h3>
-<h2>3a. Fit and plotting a tree<h2>
-```{r}
+Lasso Regression has a 97.9% classification rate. Furthermore, we see how many of the coefficients in the graph are at zero, which is what Lasso regression does. \newline
+
+\textbf{3d. Decision Tree}
+```{r message = FALSE, out.width="75%", fig.align='center'}
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+CreditCard$card = as.factor(CreditCard$card)
+
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+
 library(tree)
-tree_creditcard = tree(card ~ (active+majorcards+months+dependents+selfemp+owner+income+age+reports), train)
-summary(tree_creditcard)
-plot(tree_creditcard)
-text(tree_creditcard, pretty = 0)
+tree_card=tree(card~., data =train)
+plot(tree_card)
+text(tree_card, pretty = 0)
 ```
-<h2>3b. Error rate and mse on tree
+This tree has a depth of 3 and 4 leaves.
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+tree_pred = predict(tree_card, test, type = "class")
+tree_table = table(tree_pred, test$card)
+treeperf = (sum(diag(tree_table)))/sum(tree_table)
+treeperf
+cv.card = cv.tree(tree_card, FUN = prune.misclass)
+plot(cv.card$size, cv.card$dev, type = "b")
+title("Credit Card Acceptance Decision Tree")
+```
+The decision tree for the data we have is very simple and it looks like it does not need to be pruned any more to achieve accurate results.
 ```{r}
-tree_pred = predict(tree_creditcard, test, type = "class")
-table(tree_pred, test$card)
-mean((tree_pred - CreditCard$card)^2)
+tree_table = table(tree_pred, test$card)
+treeperf = (sum(diag(tree_table)))/sum(tree_table)
+treeperf
+tree_table
 ```
+```{r message = FALSE, warning = FALSE, out.width="75%", fig.align='center'}
+prune_card = prune.misclass(tree_card, best = 5)
+plot(prune_card)
+text(prune_card, pretty = 0)
+tree_pred = predict(prune_card, test, type = "class")
+prune_table = table(tree_pred, test$card)
+treeperf = (sum(diag(prune_table)))/sum(prune_table)
+treeperf
+```
+When trying to prune our decision tree, we get the same tree which shows that the tree will not need any more splits and already performs as well as it can. 
+
 ```{r}
-errorrate = (72+482)/(72+27+84+482)
-errorrate
+mlperformance<-matrix(c(ridgeperf, lassoperf, treeperf),ncol=1,
+                      byrow=TRUE)
+rownames(mlperformance)<-c("Ridge", "Lasso", "Decision Tree")
+colnames(mlperformance)<-c("Performance")
+mlperformance <- as.table(mlperformance)
+mlperformance
 ```
-The error rate is about 83% so we see that the pruned tree is classifying it correctly 83% of the time which is around the same as our shrinkage methods. 
-<h2> Use cross validation to prune your tree</h2> 
-```{r}
-set.seed(5)
-cv.creditcard = cv.tree(tree_creditcard, FUN = prune.misclass)
-cv.creditcard
-#plot(cv.creditcard$card, cv.creditcard$dev, type = "b")
-```
-<h2> 3d.Plotting the pruned tree</h2>
-```{r}
-prune_creditcard = prune.misclass(tree_creditcard, best = 8)
-plot(prune_creditcard)
-text(prune_creditcard, pretty = 0)
-#plot(cv.creditcard$card, cv.creditcard$dev, type = "b")
-```
-
-#```{r}
-#tree_pred = predict(prune_creditcard, test, type = "class")
-#table(tree_pred, CreditCard$card)
-#```
-<h3> Extra Credit: using the boot strap<h3>
-
-
-

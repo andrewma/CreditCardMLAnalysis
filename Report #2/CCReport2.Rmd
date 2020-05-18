@@ -1,127 +1,129 @@
 ---
 title: "Credit Card ML Analysis Report #2"
-output: html_document
+output: pdf_document
 ---
 
-<h3> Introduction </h3>
-This is the second report for my Credit Card Acceptance Project. In this part of the project, I will be incorporating the comments I received on the first project while also running logistic regressions on my y-variable with several x-variables. I can observe the correct predictions by having a table of true positives, false positives, true negatives, and false negatives. This is because my Y, or cards, is a categorical/classification. I will try to see the effect of different combinations of X's and also observing the effect of taking some variables away. I will also be trying to run a K-nearest neighbors classification on the data as well. 
+\begin{center}{\LARGE{\textbf{Second Report}}}\end{center}
+\textbf{2a. Logistic Regression}\newline
+I have 11 different variables for my y so I will choose 5 variables that I believe have the largest effect - reports, share, selfemp, majorcards,active. 
 
-<h2>2.1</h2>
-```{r, message=FALSE}
-library(ISLR)
-library(AER)
-library(ggplot2)
-data("CreditCard")
-CreditCard = data.frame(CreditCard)
-names(CreditCard)
-nrow(CreditCard)
-```
-I have 11 different variables for my y so I will choose 5 variables that I believe have the largest effect. 
+\textbf{Importing Data, Packages, and Libraries}
 ```{r}
-glm.fits1 <- glm(card~reports+share+selfemp+majorcards+active,data = CreditCard, family = binomial())
+library(AER)
+data(CreditCard)
+CreditCard$card01 <- ifelse(CreditCard$card=="yes", 1, 0)
+```
+```{r message = FALSE, warning = FALSE, out.width="75%", fig.align='center'}
+attach(CreditCard)
+glm.fits1 <- glm(card~reports+share+selfemp+majorcards+active,
+                 data = CreditCard, family = binomial)
 glm.probs1 = predict(glm.fits1,CreditCard,type="response")
 glm.pred1 = rep(0,length(glm.probs1))
-glm.pred1[glm.probs1>.5]=1
+glm.pred1[glm.probs1>.99]=1
 table1 = table(glm.pred1,CreditCard$card)
+logperf = (sum(diag(table1)))/sum(table1)
 table1
-prob1 = (1000+294)/1319
-prob1
+logperf
+plot(reports,card01,xlab="reports",ylab="card01") 
+g=glm(card~reports,family=binomial,data = CreditCard)
+curve(predict(g,data.frame(reports=x),type="resp"),add=TRUE)
 ```
-The five variables that I think most correctly predicted my model with logistic regressions are reports, share, selfemp, majorcards, active, data. I think those most logically predict my data because of the fact that negative affects of the X would negatively affect the Y. For example, having a high number of derogatory reports would cause someone to not be accepted for a credit card. While observing the correct predictions, true negatives and true positives, I see that the error rate is .9810462 which is extremely high. 
-```{r}
-glm.fits2 <- glm(card~reports+share+selfemp+dependents+months,data = CreditCard, family = binomial())
-glm.probs2 = predict(glm.fits2,CreditCard,type="response")
-glm.pred2 = rep(0,length(glm.probs2))
-glm.pred2[glm.probs2>.5]=1
-table2 = table(glm.pred2,CreditCard$card)
-table2
-prob2 = (998+295)/1319
-prob2
-```
-Next, I decided to replace majorcards and active from Model 1 with dependents and months. I decided to run a logistic regression and it had an error rate of .9802881. This was lower than the first one so it might say that having majorcards and active were better at helping the model predict than dependents and months. This makes sense because I chose the variables from Model 1 based on my own intuition on having great influence on those variables. 
-```{r}
-glm.fits3 <- glm(card~reports+share+selfemp,data = CreditCard, family = binomial())
-glm.probs3 = predict(glm.fits3,CreditCard,type="response")
-glm.pred3 = rep(0,length(glm.probs3))
-glm.pred3[glm.probs3>.5]=1
-table3 = table(glm.pred3,CreditCard$card)
-table3
-prob3 = (998+295)/1319
-prob3
-```
-For Model 3, I wanted to check how taking away variables would affect my logistic regression. With this, I decided to see the effect of my first three variables that I chose(which were the same for Model1 and Model2). These variables were reports, share, and selfempl. When looking at this, I saw that the error rate is.9802881 which means that it correctly predicted it about 98% of the time, which is also the same as when I had the two extra variables in Model 2. This does not make sense since having more variables should help our model predict better, but it is less in this case. 
 
-```{r}
-glm.fits4 <- glm(card~reports,data = CreditCard, family = binomial())
-glm.probs4 = predict(glm.fits4,CreditCard,type="response")
-glm.pred4 = rep(0,length(glm.probs4))
-glm.pred4[glm.probs4>.5]=1
-table4 = table(glm.pred4,CreditCard$card)
-table4
-prob4 = (1005+104)/1319
-prob4
-```
-In this model, I decided to see the effect of one variable on the model. I decided to do a logistic regression based on the model with the X, reports. I see that the it predicted it correctly .8407885, or ~84%. This makes sense because if we decrease the X to one variable, it would be harder to correctly predict the Y. 
+The logistic regression graph above shows how the number of derogatory reports looks like when plotted against card. 
 
-```{r}
-glm.fits5 <- glm(card~reports+income+owner+share+selfemp+dependents+majorcards+active,data = CreditCard, family = binomial())
-glm.probs5= predict(glm.fits5,CreditCard,type="response")
-glm.pred5 = rep(0,length(glm.probs5))
-glm.pred5[glm.probs5>.5]=1
-table5 = table(glm.pred5,CreditCard$card)
-table5
-prob5 = (1000+293)/1319
-prob5
-```
-In this fifth model, I decided to increase the number of variables to 8 variables. The error rate became .9802881, which is less than my first model. This does not make sense because my first model's X were present in this model and this model included more variables. Since we had more variables to predict, it should have been a higher number but it was not. This means that the variables I added dependents, majorcards, and active, do not help us predict the model too well. 
+The logistic regression used with the variables reports, share, +selfemp, majorcards, active had a 97.4981% classification rate. 
+The five variables that I think most correctly predicted my model with logistic regressions are reports, share, selfemp, majorcards, active, data. I think those most logically predict my data because of the fact that negative affects of the X would negatively affect the Y. For example, having a high number of derogatory reports would cause someone to not be accepted for a credit card. While observing the correct predictions, true negatives and true positives, I see that the error rate is .974981 which is extremely high.
 
-<h2>2.2</h2>
-```{r}
-summary(glm.fits1)
-```
-Model 1 is my best regression with the following X: reports, share, selfempl, majorcards, and active. The effect, or the values of their estimates in summary, is -4.07873, -2.57145, 2610, 0.46171, .52302, and .10532, respectively. The negative coefficient, reports, for this predictor suggests that if the reports suggest that the reports were higher for one person, they were more likely to be rejected for a credit card. This definitely makes sense because as I stated before, someone who has a higher number of derogatory reports should not be accepted for a credit card as much as someone who does not. Additionally, when looking at the P-values, I see that the p-value for reports is .00786 which indicates that there is some association between reports and credit card acceptances. Additionally, the other coefficients indicate the effect on that variable on the output, y. The coefficients are different from 0 however, selfempyes, majorcards, and active are not too significantly different from 0.
-
-
-<h2>2.3</h2>
-Model 1 is my best model with a correct prediction 98.10462% of the time. The true positive rate is 1000/1023 yes' and for the false positives, it is 23/1000. It tells me that the model is very reliable when predicting the classifications for y. 
-
-<h2>2.4</h2>
-```{r}
-glm.fits1summary=summary(glm.fits1)
-coefs=as.data.frame(glm.fits1summary$coefficients[-1,1:2])
-names(coefs)[2]="se"
-coefs$vars=rownames(coefs)
-ggplot(coefs, aes(vars,Estimate)) + 
-  geom_errorbar(aes(ymin=Estimate-1.96*se,ymax=Estimate+1.96*se),lwd=1, colour="red",width=0)+
-  geom_errorbar(aes(ymin=Estimate - se,ymax=Estimate+se),lwd=1.5,colour="blue",width=0)+
-  geom_point(size=2,pch=21,fill="yellow")
-```
-If the graphs intersect 0 they're not significant and if they do then that variable is significant. We see that for share, 
-
-<h3>PROBIT REGRESSION</h3>
-```{r}
-glm.fits=glm(card~reports+share+selfemp+majorcards+active,data=CreditCard,family = binomial(link = "probit"))
-glm.probs=predict(glm.fits,CreditCard,type="response")
-glm.pred=rep("0",length(glm.probs))
-glm.pred[glm.probs>.5]="1"
-table(glm.pred,CreditCard$card)
-mean(glm.pred==CreditCard$card)
-logitProb = (999+294)/1319
-logitProb
-```
-When running the probit regression, I see that the standard error is .9802881. Compared to my Logistic regression, which had .981. The logistic regression predicted my model better than my probit regression. The true positives and true negatives were 999 and 294 respectively. 
-
-
-```{r}
+I will see the performance of logistic regression using all variables. 
+```{r message = FALSE, warning = FALSE, out.width="75%", fig.align='center'}
+data("CreditCard")
 library(class)
-train = (CreditCard[1,659])
-head(train)
-train.X=cbind(CreditCard$reports,CreditCard$share)[train,]
-test.X=cbind(CreditCard$reports,CreditCard$share)[CreditCard[660,1319],]
-train.card=CreditCard$card[train]
-set.seed(5)
-knn.pred=knn(train.X,test.X,train.card,k=1)
-knn.pred = knn(data.frame(train.X), data.frame(test.X), train.card, k=2)
-knn.pred
-table(knn.pred,CreditCard$card)
+library(dplyr)
+data("CreditCard")
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+set.seed(123)
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+
+glm.fits1 <- glm(card~.,
+                 data = train, family = "binomial")
+logitmodel = predict(glm.fits1,test,type="response")
+logpred = rep(0,length(logitmodel))
+logpred[logitmodel>.1]=1
+logit_matrix = table(logpred,test$card)
+logperf = (sum(diag(logit_matrix)))/sum(logit_matrix)
+logit_matrix
+logperf
+plot(reports,card01,xlab="reports",ylab="card01") 
+g=glm(card~reports,family=binomial,data = CreditCard)
+curve(predict(g,data.frame(reports=x),type="resp"),add=TRUE)
+```
+The logit matrix above represents how the classification changes as the number of reports increases. This is a logical graph because as the number of derogatory reports a person has increases, they should start getting denied for a credit card application. 
+```{r}
+logit_matrix = table(logpred,test$card)
+logperf = (sum(diag(logit_matrix)))/sum(logit_matrix)
+logit_matrix
+logperf
+```
+
+When running logistic regression on all the available variables, I see that I get an accuracy of 94.94%. 
+\textbf{2b. K Nearest Neighbors}
+```{r, message = FALSE, out.width = "75%", fig.align='center', tidy=TRUE, tidy.opts=list(width.cutoff=60)}
+library(class)
+library(dplyr)
+data("CreditCard")
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+set.seed(123)
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+
+X_card_trn = train[, -1]
+Y_card_trn = train$card
+
+# testing data
+X_card_tst = test[, -1]
+Y_card_tst = test$card
+set.seed(123)
+card_pred = knn(train = scale(X_card_trn), 
+                test  = scale(X_card_tst),
+                cl    = Y_card_trn,
+                k     = 12,
+                prob  = TRUE)
+
+set.seed(123)
+i=1
+k.optm=1
+bestk = 0;
+besti = 0;
+for (i in 1:30){
+  set.seed(123)
+  knn.mod <- knn(train=scale(X_card_trn), test=scale(X_card_tst), cl=Y_card_trn, 
+                 k=i, prob = TRUE)
+  k.optm[i] <- sum(Y_card_tst == knn.mod)/NROW(Y_card_tst)
+  k=i
+   if(k.optm[i]>bestk) {
+     bestk = k.optm[i]
+     besti = k
+   }
+}
+bestk
+besti
+plot(k.optm, type="b", xlab="K- Value",ylab="Accuracy level")
+
+knn_matrix = table(card_pred, Y_card_tst)
+knnperf = (sum(diag(knn_matrix)))/sum(knn_matrix)
+knn_matrix
+knnperf
+```
+This K nearest neighbors output correctly classifies 88.1% of my testing data. Also we see that the optimal value of K is 10. 
+```{r}
+mlperformance<-matrix(c(logperf, knnperf),ncol=1,byrow=TRUE)
+rownames(mlperformance)<-c("Logistic Regression", "K Nearest Neighbors")
+colnames(mlperformance)<-c("Performance")
+mlperformance <- as.table(mlperformance)
+mlperformance
 ```

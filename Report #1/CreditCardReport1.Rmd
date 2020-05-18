@@ -1,9 +1,8 @@
 ---
 title: "Credit Card Acceptance Model"
 output:
-  html_document:
-    df_print: paged
   pdf_document: default
+  word_document: default
 ---
 
 <h3> Introduction </h3>
@@ -61,8 +60,8 @@ library(ggplot2)
 <h3> Analysis of share</h3>
 
 ```{r}
-ggplot(CreditCard, aes(share))+ 
-  geom_histogram() + ggtitle("Histogram of share")
+ggplot(CreditCard, aes(share), color = "blue")+ 
+  geom_histogram(fill="blue") + ggtitle("Histogram of share")
 ```
 
   In the histogram above, I am analyzing a single variable, share, which is the ratio of monthly credit card expenditure to income. I notice that the histogram is right skewed. This says that people typically do not spend all of their income on credit card purchases. In fact, the data indicates that many people do not spend any money charged to a credit card. However, a good portion of the data indicates that many others do spend part of their income on credit card expenditures.
@@ -70,6 +69,22 @@ ggplot(CreditCard, aes(share))+
 ```{r}
 ggplot(CreditCard, aes(x=share, y=card)) + 
   geom_boxplot() + ggtitle("Boxplot of share and card")
+```
+```{r}
+attach(CreditCard)
+par(mfrow=c(2,4))
+for(i in names(CreditCard)){
+  # excluding the card variable and others categorical variables
+  if( grepl(i, pattern="^card|owner|selfemp|name|majorcards")){ next}
+  boxplot(eval(parse(text=i)) ~ card, ylab=i, main =paste(i, "boxplot"), 
+          col=c("red", "blue"))
+}
+```
+```{r}
+share_boxplot = boxplot(share~card, data=CreditCard, notch=TRUE, 
+  col=(c("gold","darkgreen")),
+  main="Share boxplot", xlab="Scard")
+summary(share_boxplot)
 ```
   
   When looking at this graph, I notice that there were many credit cards approved even though the share of the monthly card expenditure and yearly income was in a wide range. However, this data also told me that everyone who got rejected for a credit card had a low share which is interesting to see because it seems that a low share is a good thing which means that people are not spending too money on their credit card in relation to their income. 
@@ -124,7 +139,7 @@ ggplot(CreditCard, aes(x=majorcards, y=card))+
 
 ```{r}
 ggplot(CreditCard, aes(active))+ 
-  geom_bar(color = "orange", fill = "green") + ggtitle("Number of occurrences for values of the number of active credit accounts")
+  geom_bar(color = "blue", fill = "blue") + ggtitle("Number of occurrences for values of the number of active credit accounts")
   # labs(y="count")
 ```
     This graph tells us the distribution of the number of active credit accounts for the dataset we have. Most people who apply for a credit card have 0 active credit accounts. This is logical because if someone does not have a credit account, it seems that they may want to go apply for a credit card. The data shows that the distribution starts to lower as we increase the number of active credit accounts. This is logical as well because since they already have active credit accounts, they are less likely to go want to get another credit card. 

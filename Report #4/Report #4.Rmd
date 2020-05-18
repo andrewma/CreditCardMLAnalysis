@@ -1,237 +1,256 @@
 ---
-title: "Credit Card ML Analysis Report #4"
-output: html_document
+title: "Credit Card Report 4"
+output:
+  pdf_document: default
 ---
+\begin{center}{\LARGE{\textbf{Fourth Report}}}\end{center}
+\textbf{4a. Splitting dataset}
 
-<h3> Introduction </h3>
-This is the third report for my Credit Card Acceptance Project. In this part of the project, I will be incorporating different regression methods such as Bagging, Random Forest, Boosting, and XGBoost Regression. Additionally, for extra credit, I will be tuning parrameters using grid search for my boosting model (4). 
-
-```{r, message=FALSE}
-library(ISLR)
+```{r message = FALSE}
 library(AER)
-library(ggplot2)
 library(dplyr)
-library(randomForest)
-rm(list=ls())
 data("CreditCard")
 CreditCard = data.frame(CreditCard)
-names(CreditCard)
-nrow(CreditCard)
-ls(CreditCard)
-#CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
-#CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
-#CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
-#CreditCard$card = as.numeric(as.factor(CreditCard$card))
-#CreditCard$owner = as.numeric(as.factor(CreditCard$owner))
-#CreditCard$selfemp = as.numeric(as.factor(CreditCard$selfemp))
-#CreditCard
-```
-<h3>1. Dividing data into training and testing subset</h3>
-```{r}
-set.seed(1)
+library(randomForest)
+set.seed(123)
 card_train = CreditCard %>%
   sample_frac(.70)
 
 card_test = CreditCard %>%
   setdiff(card_train)
 ```
-I am dividing my data into half so that I will have inputs to train my model and then use the other half to test my models later. I chose to train on 70% of my data and then test on 30% of my data. 70% is a reasonable number and having 30% to test should be sufficient enough to determine the accuracy of my models below. 
-
-<h3>2.Fitting a bagging regression</h3>
-<h2>a. Plot the out-of-bag error rate as a function of number of trees</h2>
-```{r}
-set.seed(1)
+\textbf{4b. Bagging}
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+set.seed(123)
 bag.card = randomForest(card ~., data = card_train, 
                           mtry=ncol(card_train) - 1, 
                           importance=TRUE) 
 plot(bag.card, ylim=c(0.01, .05))
-```
-This plot displays the out of bag error rate as a function of number of trees. It tells us the misclassification rate of the overall training data which is the line in black. The red line indicates the misclassification rate for the yes'. The green line tells us the misclassification rate for the no's. The x-axis is the trees and the y-axis is the error rate. Our argument mtry tells us that all 11 predictors are going to be considered for each split of the tree. Also, We see that the error is decreasing as we keep splitting the trees which is correct. 
-<h2> b. Error Rate table for Classification</h2>
-```{r} 
-bag.card
-yhat.bag = predict(bag.card, newdata = card_test)
-#table(yhat.bag, card_test$card)
-#CM = table(yhat.bag, card_test$card)
-#accuracy = (sum(diag(CM)))/sum(CM)
-#accuracy
-#CM
-(199+705)/(199+705+15+4)
-```
-The error rate table tells us the accuracy of our model. The error rate for classification was ~97.942%. This means that our bagging model classified our data correctly 97% of the time. 
-
-<h2>2c.Comparing the error rate to the test error rate in the Ridge and LASSO models from Report 3.</h2>
-The error rate for bagging was 97.9415%, for LASSO was 97.3%, and for Ridge was 96.9%. Bagging may have been better at classifying my data because my some of my variables and my response variable was categorical. Bagging, which is similar to random forests, can automatically model non-linear data, which is closer to the data I have. 
-
-<h2>2d.Importance Matrix</h2>
-```{r}
-importance(bag.card)
 varImpPlot(bag.card)
 ```
-This importance matrix displays the importance of each attribute using the fitted classifier. I have the matrix and also the graph of the matrix by using the function varImpPlot. MeanDecreaseAccuracy gives us how much the accuracy decreases by ommitting the respective variable. The MeanDecreaseGini tells us the decrease of the Gini impurity when a variable is chosen to split a node. One thing we notice is that expenditure is a variable that does affect our bagging model because our accuracy decreases the greatest when we omit that variable. 
-
-<h3>3.Fitting a Random Forest Regression</h3>
-<h2>a. Ploting the out-of-bag error rate as a function of number of predictors considered in each split</h2>
+This plot displays the out of bag error rate as a function of number of trees. It tells us the misclassification rate of the overall training data which is the line in black. The red line indicates the misclassification rate for the yes'. The green line tells us the misclassification rate for the no's. The x-axis is the trees and the y-axis is the error rate. Our argument mtry tells us that all 11 predictors are going to be considered for each split of the tree. Also, We see that the error is decreasing as we keep splitting the trees which is correct. 
 ```{r message = FALSE}
-set.seed(1)
+set.seed(123)
+yhat.bag = predict(bag.card, newdata = card_test)
+table(yhat.bag, card_test$card)
+CM = table(yhat.bag, card_test$card)
+baggingperf = (sum(diag(CM)))/sum(CM)
+baggingperf
+
+```
+Bagging regression predicted our testing data to 97.98% accuracy.\newline
+\textbf{4c. Random Forest}
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+set.seed(123)
 rf.card = randomForest(card~., 
                          data = card_train, 
                          mtry = 5, 
                          importance = TRUE,
-                         do.trace = 100) #do.trace gives you the OOB MSE for every 100 trees
+                         do.trace = 100)
 plot(rf.card, ylim = c(0, 0.03))
-```
-The hyperparameters for random forest are: mtry: which is the number of variables used at each split, ntree: which is the total number of trees, nodesize: which is the number of observations that we want in the terminal nodes (closely related to the depth of each tree). Also, looking at the plot, as we can see, this plot displays the out of random forest error rate as a function of number of trees. It tells us the misclassification rate of the overall training data which is the line in black. The red line indicates the misclassification rate for the yes'. The green line tells us the misclassification rate for the no's. The x-axis is the trees and the y-axis is the error rate. Our argument mtry tells us that all 11 predictors are going to be considered for each split of the tree. Also, We see that the error is decreasing as we keep splitting the trees which is correct. 
 
-<h2>b.Using out of bag error to tune the number of predictors in each split (mtry)</h2>
-```{r}
-rf.card = randomForest(card~., 
-                         data = card_train, 
-                         mtry = 5, 
-                         importance = TRUE,
-                         do.trace = 100) #do.trace gives you the OOB MSE for every 100 trees
-```
-We need to use the out of bag error to tune the number of predictors in each split. Typically, the value for mtry should be number of variables divided by 3. However, it is beneficial to look at the out of bag error to truly determine which mtry is better. I chose 5 for mtry. When using 6, all the out of bag error rates were 2.06% when ntrees were 100 to 500. When using 4 for mtry, the out of bag error rates were 2.06% for 100 and then were 1.95 percent for the rest of ntrees. mtry=5 gives us the lowest out of bag rate so it should be the one we use. 
-
-<h2> c. Error rate table for classification</h2>
-```{r}
 yhat.rf = predict(rf.card, newdata = card_test)
-rf.card
-card_pred = predict(rf.card, newdata=card_test)
-table(card_pred, card_test$card)
-#CM = table(yhat.rf, card_test$card)
-#accuracy = (sum(diag(CM)))/sum(CM)
-#accuracy
-#CM
-(296+92)/(296+92+7+1)
+table(yhat.rf, card_test$card)
+CM = table(yhat.rf, card_test$card)
+rfperf = (sum(diag(CM)))/sum(CM)
+rfperf
 ```
-The accuracy rate for random forest is ~97.9798. We look at whether or not it tested it properly by looking at the no-no and yes-yes.
-<h2>d.Random Forest Error rate compared to LASSO/Ridge/Bagging</h2>
-The Random Forest Error rate was 97.9798% and the error rate for bagging was 97.9415%, for LASSO was 97.3%, and for Ridge was 96.9%. Random Forest may have been better at classifying my data because my some of my variables and my response variable was categorical. Random Forest can automatically model non-linear data, which is closer to the data I have which may be why it performed better than LASSO and Ridge. Additionally, I would expect random forest and bagging to have similar error rates because they are similar to each other. The difference is that in random forest, only a subset of features are selected at random out of the total and the best split feature from the subset is used to split each node in a tree, unlike in bagging where all features are considered for splitting a node. 
-
-<h2>e. Importance Matrix</h2>
+This graph shows us the error of our random forest as we increase the number of trees. The green and red lines are errors of application accepted and application denied.
 ```{r}
-importance(rf.card)
 varImpPlot(rf.card)
 ```
-In the graphs above, we see the effects of the variables. It is similar to bagging for reasons stated above and MeanDecreaseAccuracy and MeanDecreaseGini also tell us the effect of the variables. MeanDecreaseAccuracy gives us how much the accuracy decreases by ommitting the respective variable. The MeanDecreaseGini tells us the decrease of the Gini impurity when a variable is chosen to split a node. One thing we notice is that expenditure is a variable that does affect our bagging model because our accuracy decreases the greatest when we omit that variable. 
+The hyperparameters for random forest are: mtry: which is the number of variables used at each split, ntree: which is the total number of trees, nodesize: which is the number of observations that we want in the terminal nodes (closely related to the depth of each tree). Also, looking at the plot, as we can see, this plot displays the out of random forest error rate as a function of number of trees. It tells us the misclassification rate of the overall training data which is the line in black. The red line indicates the misclassification rate for the yes'. The green line tells us the misclassification rate for the no's. The x-axis is the trees and the y-axis is the error rate. Our argument mtry tells us that all 11 predictors are going to be considered for each split of the tree. Also, We see that the error is decreasing as we keep splitting the trees which is correct.\newline
 
-<h2>f.Plot the test error and out-of-bag error in a same graph vs mtry and show that they follow a similar pattern</h2>
-```{r}                
-oob.err<-double(11)
-test.err<-double(11)
-
-#mtry is no of Variables randomly chosen at each split
-if(FALSE){
-for(mtry in 1:11) 
-{
-  rf=randomForest(card ~ . , data = card_train, mtry=mtry, ntree=400) 
-  
-  #oob.err[mtry] = rf$mtry[400] #Error of all Trees fitted on training
-  
-  pred=predict(rf,card_test) #Predictions on Test Set for each Tree
-  CM = table(rf, card_test$card)
-  accuracy = (sum(diag(CM)))/sum(CM)
-  test.err[mtry]= with(card_test, accuracy) # "Test" Mean Squared Error
- #print(mtry)
-  card_pred = predict(rf.card, newdata=card_test)
-table(card_pred, card_test$card)
-
-}
-}
-#round(test.err ,2) #what `mtry` do you use based on test error?
-#round(oob.err,2) #does training error give you the same best `mtry`?
-#matplot(1:mtry , cbind(oob.err,test.err), pch=20 , col=c("red","blue"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split")
-#legend("topright",legend=c("Out of Bag Error","Test Error"),pch=19, col=c("red","blue"))
-```
-<h3>4.Fit a Boosting Regression</h3>
-<h2>a. Error Rate Table for classification</h2>
-```{r}
+\textbf{4d. Boosting}
+```{r message=FALSE, warning = FALSE, out.width = "75%", fig.align='center'}
 library(gbm)
-set.seed(2)
+library(randomForest)
+data("CreditCard")
+ls(CreditCard)
 CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
-CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
-CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+
+set.seed(123)
 card_train = CreditCard %>%
-  sample_frac(.5)
+  sample_frac(.70)
 
 card_test = CreditCard %>%
   setdiff(card_train)
 
+set.seed(123)
 boost.card = gbm(card~., 
                    data = card_train, 
-                   distribution = "bernoulli", #"bernoulli" for logitic regression
+                   distribution = "bernoulli", 
                    n.trees = 500, 
                    interaction.depth = 4)
-#summary(boost.card)
+
+summary(boost.card)
+
 yhat.boost = predict(boost.card, 
                          newdata = card_test, 
-                         n.trees = 500)
+                         n.trees = 5000)
 
-#summary(boost.card)
-#yhat.boost
-#card_pred = predict(yhat.boost, newdata=card_test)
-CM = table(yhat.boost, card_test$card)
-accuracy = (sum(diag(CM)))/sum(CM)
-accuracy
+boost_pred = predict(boost.card, card_test, n.trees=500, type = "response")
+y_pred = ifelse(boost_pred>0.2,1,0)
+boost_matrix = table(card_test$card, y_pred)
+boostingperf = (sum(diag(boost_matrix)))/sum(boost_matrix)
+boostingperf
+boost.card
 ```
-```{r}
-yhat.boost = predict(boost.card, 
-                         newdata = card_test, 
-                         n.trees = 500)
-yhat.boost
+The relative influence of Boosting shows us that the most important variables in determine the status of an application is mainly expenditure, but then share and age.
+```{r message = FALSE, out.width = "75%", fig.align='center'}
+boost_matrix
+boostingperf
 ```
-
-<h2>b.Error Rate compared to LASSO/Ridge/Bagging/Random Forest</h2>
-<h2>c.Importance Matrix</h2>
-
-
-<h3>5.XGBoost regression</h3>
-```{r message = FALSE}
+Boosting has a classification rate of 97.2%. \newline
+\textbf{4e. XGBoost}
+```{r message = FALSE, out.width = "75%", fig.align='center'}
 library(xgboost)
-```
-<h2>Preparing data for XGBoost Model<h2>
-```{r}
-#CreditCard$card = as.numeric(as.factor(CreditCard$card))
-#CreditCard$owner = as.numeric(as.factor(CreditCard$owner))
-#CreditCard$selfemp = as.numeric(as.factor(CreditCard$selfemp))
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+
+CreditCard$card <- ifelse(CreditCard$card=="yes", 1, 0)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+
+card_train = CreditCard %>%
+  sample_frac(.70)
+
+card_test = CreditCard %>%
+  setdiff(card_train)
+
 Y_train <- as.matrix(card_train[,"card"])
 X_train <- as.matrix(card_train[!names(card_train) %in% c("card")])
 dtrain <- xgb.DMatrix(data = X_train, label = Y_train)
-#dtrain <- xgb.DMatrix(as.matrix(sapply(X_train, as.numeric)), label=Y_train)
-X_test <- as.matrix(card_test[!names(card_train) %in% c("card")])
-```
-<h2>a. Error rate table</h2>
-```{r}
 
+X_test <- as.matrix(card_test[!names(card_train) %in% c("card")])
 set.seed(123)
+set.seed(2)
 card.xgb = xgboost(data=dtrain,
                      max_depth=2,
                      eta = 0.1,
-                     nrounds=40, # max number of boosting iterations (trees)
+                     nrounds=40,
                      lambda=0,
                      print_every_n = 10,
-                     objective="binary:logistic") # for classification: objective = "binary:logistic"
+                     objective="binary:logistic")
 
-
-
-set.seed(2)
-param <- list("max_depth" = 2, "eta" = 0.1, "objective" = "reg:linear", "lambda" = 0)
-cv.nround <- 500
-cv.nfold <- 5
-card.xgb.cv <- xgb.cv(param=param, data = dtrain,
-                        nfold = cv.nfold,
-                        nrounds=cv.nround,
-                        early_stopping_rounds = 20 # training will stop if performance doesn't improve for 20 rounds from the last best iteration
-       )
-
+set.seed(123)
 yhat.xgb <- predict(card.xgb,X_test)
-CM = table(yhat.xgb, card_test$card)
-accuracy = (sum(diag(CM)))/sum(CM)
-accuracy
-CM
+y_pred = ifelse(yhat.xgb>0.2,1,0)
+xgboost_matrix = table(y_pred, card_test$card)
+xgboostperf = (sum(diag(xgboost_matrix)))/sum(xgboost_matrix)
+xgboost_matrix
+xgboostperf
 ```
-<h2> b. Comparing error rate Lasso/Ridge/Bagging/RandomForest/Boosting models</h2>
-<h2> c.Importance matrix</h2>
-dtrain <- xgb.DMatrix(as.matrix(sapply(X_train, as.numeric)), label=Y_train)
-<h3>Extra Credit: Tuning parameters using grid search for Boosting model in part 4</h3>
+XGBoost had the same performance as Boosting. 
+```{r, out.width = "75%", fig.align='center'}
+importance <- xgb.importance(colnames(X_train),model=card.xgb)
+importance
+xgb.plot.importance(importance, rel_to_first=TRUE, xlab="Relative Importance")
+```
+XGBoost also found expenditure, share, and reports as the most important variables.\newline 
+
+\textbf{4e. Neural Net}
+
+Setting up the data for the Neural Net
+
+```{r message = FALSE}
+library(keras)
+library(ISLR)
+library(dplyr)
+library(AER)
+library(tensorflow)
+data("CreditCard")
+CreditCard = data.frame(CreditCard)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+```
+
+```{r message=FALSE, out.width = "75%", fig.align='center'}
+CreditCard$card_yes <- ifelse(CreditCard$card == "yes",1,0)
+set.seed(123) 
+card_train = CreditCard %>%
+  sample_frac(.7)
+
+card_test = CreditCard %>%
+  setdiff(card_train)
+
+train_labels <- to_categorical(card_train[,"card_yes"],2)
+train_data <- as.matrix(card_train[!names(card_train) %in% c("card","card_yes")])
+test_data <- as.matrix(card_test[!names(card_train) %in% c("card","card_yes")])
+test_labels <- to_categorical(card_test[,"card_yes"])
+
+model <- keras_model_sequential() %>%
+  layer_dense(units = 64, activation = "softmax",
+              input_shape = dim(train_data)[2]) %>%
+  layer_dense(units = 64, activation = "softmax") %>%
+  layer_dense(units = 2, activation= "softmax")
+
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+early_stop <- callback_early_stopping(monitor = "val_loss", patience = 20)
+
+epochs=200
+history_class <- model %>% fit(
+  train_data,
+  train_labels,
+  epochs = epochs,
+  validation_split = 0.2,
+  callbacks = list(early_stop)
+)
+plot(history_class)
+
+test_predictions <- model %>% predict(test_data)
+test_class <- model %>% predict_classes(test_data)
+error_table = table(test_labels[,2], test_class)
+neuralnetperf = (sum(diag(error_table)))/sum(error_table)
+neuralnetperf
+```
+
+The Neural Net had a classification rate of 98.7%. The graph also shows us the accuracy and loss of our training and validation sets as our epochs increase. Our epochs is the number of back propogations we want to do for the model and we set it to stop after it doesnt change much in a certain number of iterations. As the epoch starts to approach 75, it does not change too much. 
+
+\textbf{4g. Support Vector Machines}
+```{r message=FALSE, out.width = "75%", fig.align='center', warning = FALSE}
+data("CreditCard")
+library(dplyr)
+library(ggplot2)
+library(e1071)
+set.seed(123)
+CreditCard$card = as.factor(CreditCard$card)
+CreditCard$owner <- ifelse(CreditCard$owner=="yes", 1, 0)
+CreditCard$selfemp <- ifelse(CreditCard$selfemp=="yes", 1, 0)
+training_set = CreditCard %>%
+  sample_frac(.7)
+
+testing_set = CreditCard %>%
+  setdiff(training_set)
+
+dat = data.frame(x = X_train, y = as.factor(Y_train))
+
+CreditCard$card = factor(CreditCard$card, levels = c(0, 1))
+
+set.seed(123)
+tune.out = tune(svm, card~., data = training_set, kernel = "radial",
+                ranges = list(cost = c(0.1,1,10,100,1000), gamma = c(0.5,1,2,3,4)))
+bestmod = tune.out$best.model
+plot(bestmod, training_set, age~months)
+svm_table = table(true = testing_set$card, pred = predict(tune.out$best.model, 
+                                                       newdata = testing_set))
+svmperf = (sum(diag(svm_table)))/sum(svm_table)
+svmperf
+```
+The SVM only had an accuracy rate of 87.37 percent. Also with the graph above, it is observed that an SVM can still be applied to data that is not linearly separable. It makes the assumption that similar data points will be close together on a graph. We can see that to an extent re low values and low values of age would typically get rejected for a credit card. 
+
+{\textbf{\large 5. Model Comparisons}}
+```{r}
+mlperformance<-matrix(c(baggingperf, 
+                        rfperf, boostingperf, xgboostperf, neuralnetperf, svmperf), 
+                        ncol=1,byrow=TRUE)
+rownames(mlperformance)<-c("Bagging","Random Forest", 
+                           "Boosting", "XGBoost", "Neural Network", 
+                           "Support Vector Machine")
+colnames(mlperformance)<-c("Performance")
+mlperformance
+```

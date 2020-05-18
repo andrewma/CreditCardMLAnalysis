@@ -1,0 +1,32 @@
+---
+title: "AdaBoost"
+output: pdf_document
+---
+
+\\textbf{Importing Libraries and Data}
+```{r message = FALSE, warning = FALSE}
+library(adabag)
+library(caret)
+library(AER)
+library(dplyr)
+data(CreditCard)
+```
+
+
+```{r message = FALSE, warning = FALSE}
+set.seed(123)
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+
+adaboost_model = boosting(card ~., data = train, BOOS = true, mfinal = 50)
+```
+
+```{r message = FALSE, warning = FALSE}
+print(names(adaboost_model))
+adaboost_pred = predict(adaboost_model, test)
+adaboost_matrix = adaboost_pred$confusion
+adaboost_perf = (sum(diag(adaboost_matrix)))/sum(adaboost_matrix)
+xgboost_matrix
+xgboostperf
+print(adaboost_pred$error)
+```

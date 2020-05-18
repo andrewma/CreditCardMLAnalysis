@@ -1,0 +1,115 @@
+---
+title: "Discriminant Analysis Methods"
+output: pdf_document
+---
+
+\textbf{Importing Libraries and Data}
+```{r message = FALSE, warning = FALSE}
+library(caret)
+library(AER)
+library(dplyr)
+library(tidyverse)
+library(MASS)
+data(CreditCard)
+attach(CreditCard)
+```
+
+
+```{r message = FALSE, warning = FALSE}
+set.seed(123)
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+CreditCard
+```
+
+
+```{r}
+preproc.param <- train %>% 
+  preProcess(method = c("center", "scale"))
+# Transform the data using the estimated parameters
+train.transformed <- preproc.param %>% predict(train)
+test.transformed <- preproc.param %>% predict(test)
+```
+
+\textbf{Linear Discriminant Analysis}
+
+```{r}
+# Fit the model
+lda_model <- lda(card~., data = train.transformed)
+# Make predictions
+predictions <- lda_model %>% predict(test.transformed)
+# Model accuracy
+mean(predictions$class==test.transformed$card)
+
+```
+```{r}
+plot(lda_model)
+```
+
+```{r}
+predictions <- lda_model %>% predict(test.transformed)
+names(predictions)
+```
+```{r}
+# Predicted classes
+head(predictions$class, 6)
+# Predicted probabilities of class memebership.
+head(predictions$posterior, 6) 
+# Linear discriminants
+head(predictions$x, 3) 
+```
+```{r}
+#lda.data <- cbind(train.transformed, predict(lda_model)$x)
+#ggplot(lda.data, aes(LD1, LD2)) +
+#  geom_point(aes(color = card))
+```
+```{r}
+mean(predictions$class==test.transformed$card)
+```
+```{r message = FALSE, warning = FALSE}
+set.seed(123)
+train = CreditCard %>% sample_frac(.7)
+test = CreditCard %>% setdiff(train)
+CreditCard
+```
+
+```{r}
+#qda_model <- qda(card~., data = train.transformed)
+#qda_model
+# Make predictions
+#predictions <- model %>% predict(test.transformed)
+# Model accuracy
+#mean(predictions$class == test.transformed$card)
+```
+
+```{r}
+library(mda)
+# Fit the model
+mda_model <- mda(card~., data = train.transformed)
+mda_model
+# Make predictions
+predicted.classes <- model %>% predict(test.transformed)
+# Model accuracy
+mean(predicted.classes == test.transformed$Species)
+```
+
+
+```{r}
+library(mda)
+# Fit the model
+model <- fda(card~., data = train.transformed)
+# Make predictions
+predicted.classes <- model %>% predict(test.transformed)
+# Model accuracy
+mean(predicted.classes == test.transformed$card)
+```
+
+```{r}
+library(klaR)
+# Fit the model
+model <- rda(card~., data = train.transformed)
+# Make predictions
+predictions <- model %>% predict(test.transformed)
+# Model accuracy
+mean(predictions$class == test.transformed$card)
+```

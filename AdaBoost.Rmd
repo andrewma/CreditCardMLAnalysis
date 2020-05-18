@@ -26,7 +26,7 @@ print(names(adaboost_model))
 adaboost_pred = predict(adaboost_model, test)
 adaboost_matrix = adaboost_pred$confusion
 adaboost_perf = (sum(diag(adaboost_matrix)))/sum(adaboost_matrix)
-xgboost_matrix
-xgboostperf
+adaboost_matrix
+adaboost_perf
 print(adaboost_pred$error)
 ```
